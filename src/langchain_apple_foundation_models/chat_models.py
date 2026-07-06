@@ -19,6 +19,24 @@ from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResu
 from langchain_core.tools import BaseTool
 from pydantic import Field
 
+_cached_framework_version: Optional[str] = None
+
+
+def _framework_version() -> str:
+    """Apple's FoundationModels framework version, e.g. for tracing metadata.
+
+    `Session.get_version()` needs a live instance to call (it isn't a
+    classmethod), so a throwaway Session gets created once and the result
+    cached -- not re-created on every _get_ls_params() call.
+    """
+    global _cached_framework_version
+    if _cached_framework_version is None:
+        try:
+            _cached_framework_version = afm.Session().get_version()
+        except Exception:
+            _cached_framework_version = "unknown"
+    return _cached_framework_version
+
 
 def _wrap_tool(tool: BaseTool) -> Callable[..., Any]:
     """Wrap a LangChain BaseTool as a plain Python callable.
@@ -73,18 +91,41 @@ class ChatAppleFoundationModels(BaseChatModel):
     max_tokens: Optional[int] = Field(default=None)
 
     _session: Optional[afm.Session] = None
-    _bound_tools: List[Callable[..., Any]] = []
+    _session_tools: Optional[List[Callable[..., Any]]] = None
 
     @property
     def _llm_type(self) -> str:
         return "apple-foundation-models"
 
-    def _get_session(self, system_instructions: Optional[str]) -> afm.Session:
-        if self._session is None:
+    @classmethod
+    def is_lc_serializable(cls) -> bool:
+        return True
+
+    def _get_ls_params(self, stop: Optional[List[str]] = None, **kwargs: Any) -> dict:
+        params = super()._get_ls_params(stop=stop, **kwargs)
+        # There's only one on-device model -- no real "model override" concept
+        # -- but honor an explicit `model=` kwarg if a caller passes one
+        # anyway, so traces reflect what was actually asked for.
+        params["ls_model_name"] = kwargs.get(
+            "model", f"apple-foundation-models-{_framework_version()}"
+        )
+        return params
+
+    def _get_session(
+        self,
+        system_instructions: Optional[str],
+        tools: Optional[List[Callable[..., Any]]] = None,
+    ) -> afm.Session:
+        # `tools` arrives per-call via bind_tools' standard RunnableBinding
+        # kwargs, not as instance state -- rebuild the session if the bound
+        # tools changed (e.g. .bind_tools() was called again) rather than
+        # silently keep serving the old tool set.
+        if self._session is None or tools is not self._session_tools:
             self._session = afm.Session(
                 instructions=system_instructions or self.instructions,
-                tools=self._bound_tools or None,
+                tools=tools or None,
             )
+            self._session_tools = tools
         return self._session
 
     @staticmethod
@@ -132,7 +173,7 @@ class ChatAppleFoundationModels(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         system_instructions, prompt = self._extract_system_and_prompt(messages)
-        session = self._get_session(system_instructions)
+        session = self._get_session(system_instructions, kwargs.get("tools"))
         resp = session.generate(
             prompt,
             temperature=self.temperature,
@@ -157,7 +198,7 @@ class ChatAppleFoundationModels(BaseChatModel):
         **kwargs: Any,
     ) -> Iterator[ChatGenerationChunk]:
         system_instructions, prompt = self._extract_system_and_prompt(messages)
-        session = self._get_session(system_instructions)
+        session = self._get_session(system_instructions, kwargs.get("tools"))
         for chunk in session.generate(
             prompt,
             stream=True,
@@ -174,12 +215,13 @@ class ChatAppleFoundationModels(BaseChatModel):
         self,
         tools: Sequence[Union[BaseTool, Callable[..., Any]]],
         **kwargs: Any,
-    ) -> "ChatAppleFoundationModels":
-        wrapped = [t if not isinstance(t, BaseTool) else _wrap_tool(t) for t in tools]
-        new_instance = self.model_copy()
-        new_instance._session = None  # tools changed -> force a fresh Session
-        new_instance._bound_tools = wrapped
-        return new_instance
+    ) -> Any:
+        # Standard LangChain convention: bind_tools returns a RunnableBinding
+        # (via Runnable.bind), not a mutated copy of the model itself -- the
+        # broader ecosystem (agents, tracing, serialization) expects this
+        # exact shape. _generate/_stream read the tools back out of kwargs.
+        wrapped = [_wrap_tool(t) if isinstance(t, BaseTool) else t for t in tools]
+        return self.bind(tools=wrapped, **kwargs)
 
     def with_structured_output(
         self,

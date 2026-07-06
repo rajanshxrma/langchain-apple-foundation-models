@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "langchain-apple-foundation-models"
-version = "0.1.0"
+version = "0.2.0"
 description = "LangChain chat model provider for Apple's on-device Foundation Models framework"
 readme = "README.md"
 license = { text = "MIT" }
