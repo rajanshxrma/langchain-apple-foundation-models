@@ -12,8 +12,10 @@ llm.invoke("What is the capital of France?")
 ## Install
 
 ```
-pip install langchain-apple-foundation-models
+pip install git+https://github.com/rajanshxrma/langchain-apple-foundation-models.git
 ```
+
+(Not yet on PyPI -- installing from source for now.)
 
 Requires macOS 26+ with Apple Intelligence enabled and Apple Silicon.
 
@@ -27,6 +29,18 @@ Apple shipped a Python SDK for its on-device model this year (`apple-foundation-
 - **Structured output**: `.with_structured_output(schema)` for JSON-schema or Pydantic-constrained generation.
 - **Streaming**: `.stream(...)` yields tokens as they're generated.
 - Zero network calls -- generation happens entirely on-device via Apple's Neural Engine.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    App["Your LangChain code<br/>chains / agents / tools"] -->|".invoke() .stream() .bind_tools()"| Provider["ChatAppleFoundationModels"]
+    Provider --> SDK["apple-foundation-models<br/>(Python SDK)"]
+    SDK --> FM["Foundation Models framework<br/>on-device, Apple Silicon, Neural Engine"]
+    FM -.->|"no network call, ever"| SDK
+```
+
+`ChatAppleFoundationModels` implements LangChain's standard chat model interface, so it drops into any existing chain, agent, or tool-calling setup as a swap-in for a cloud provider -- the only difference is generation happens on-device.
 
 ## Example: tool calling
 
