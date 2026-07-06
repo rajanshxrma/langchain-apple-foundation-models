@@ -2,6 +2,8 @@
 
 Use Apple's on-device Foundation Models as a drop-in LangChain chat model. Runs fully offline on macOS 26+ Apple Silicon -- no API key, no network call, no per-token cost.
 
+![demo](assets/demo.gif)
+
 ```python
 from langchain_apple_foundation_models import ChatAppleFoundationModels
 
