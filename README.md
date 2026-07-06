@@ -1,5 +1,7 @@
 # langchain-apple-foundation-models
 
+[![PyPI](https://img.shields.io/pypi/v/langchain-apple-foundation-models)](https://pypi.org/project/langchain-apple-foundation-models/)
+
 Use Apple's on-device Foundation Models as a drop-in LangChain chat model. Runs fully offline on macOS 26+ Apple Silicon -- no API key, no network call, no per-token cost.
 
 ![demo](assets/demo.gif)
@@ -14,10 +16,8 @@ llm.invoke("What is the capital of France?")
 ## Install
 
 ```
-pip install git+https://github.com/rajanshxrma/langchain-apple-foundation-models.git
+pip install langchain-apple-foundation-models
 ```
-
-(Not yet on PyPI -- installing from source for now.)
 
 Requires macOS 26+ with Apple Intelligence enabled and Apple Silicon.
 
