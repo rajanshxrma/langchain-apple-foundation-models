@@ -1,0 +1,18 @@
+# serializer version: 1
+# name: TestChatAppleFoundationModelsUnit.test_serdes[serialized]
+  dict({
+    'id': list([
+      'langchain_apple_foundation_models',
+      'chat_models',
+      'ChatAppleFoundationModels',
+    ]),
+    'kwargs': dict({
+      'max_tokens': 100,
+      'output_version': None,
+      'temperature': 0.0,
+    }),
+    'lc': 1,
+    'name': 'ChatAppleFoundationModels',
+    'type': 'constructor',
+  })
+# ---
