@@ -30,7 +30,7 @@ Apple shipped a Python SDK for its on-device model this year (`apple-foundation-
 - **Tool calling**: pass LangChain `@tool`-decorated functions via `.bind_tools([...])`, same as any other LangChain chat model.
 - **Structured output**: `.with_structured_output(schema)` for JSON-schema or Pydantic-constrained generation.
 - **Streaming**: `.stream(...)` yields tokens as they're generated.
-- Zero network calls -- generation happens entirely on-device via Apple's Neural Engine.
+- Zero network calls -- generation happens entirely on-device.
 
 ## Architecture
 
@@ -38,7 +38,7 @@ Apple shipped a Python SDK for its on-device model this year (`apple-foundation-
 flowchart LR
     App["Your LangChain code<br/>chains / agents / tools"] -->|".invoke() .stream() .bind_tools()"| Provider["ChatAppleFoundationModels"]
     Provider --> SDK["apple-foundation-models<br/>(Python SDK)"]
-    SDK --> FM["Foundation Models framework<br/>on-device, Apple Silicon, Neural Engine"]
+    SDK --> FM["Foundation Models framework<br/>on-device, Apple Silicon"]
     FM -.->|"no network call, ever"| SDK
 ```
 
