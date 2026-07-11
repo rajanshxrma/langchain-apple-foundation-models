@@ -62,6 +62,7 @@ llm.invoke("What's the weather in Austin?")
 ## Known limitations
 
 - **Multi-turn history is owned by the underlying `Session`, not LangChain's message list.** Each `ChatAppleFoundationModels` instance lazily creates one on-device `Session` and reuses it across calls; if you pass a message list that diverges from what the session itself has tracked, the two can get out of sync. Fresh chains work naturally; manually-edited history does not yet.
+- **Concurrent calls are serialized, by design.** The on-device framework supports one in-flight generation per process (the Python SDK exposes a single global native session), so the provider guards every generation with a process-wide lock. `batch()`/`abatch()` and multi-threaded use are safe, but execute one generation at a time -- concurrency adds no throughput on this backend. And because of the session-owned history above, batch items on one instance join the same running conversation, exactly as sequential `invoke()` calls do.
 - Built on the [`apple-foundation-models`](https://github.com/btucker/apple-foundation-models-py) unofficial Python bindings (alpha), which itself wraps Apple's Foundation Models framework -- both inherit Apple's current 4,096-token context window.
 - No support (yet) for Apple's newer multi-model / Private Cloud Compute routing announced at WWDC26 -- that requires an OS/SDK combination not yet stable enough to depend on. See the repo issues for status.
 
